@@ -1,0 +1,13 @@
+{application,erasure,
+ [{description,"An OTP library"},
+  {vsn,"git"},
+  {registered,[]},
+  {applications,[kernel,stdlib]},
+  {env,[]},
+
+  %% hex.pm packaging:
+  {licenses, ["Apache 2.0"]},
+  {maintainers, ["Helium"]},
+  {links, [{"Github", "https://github.com/helium/erlang-erasure"}]},
+  {exclude_files, ["c_src/jerasure/*", "c_src/gf-complete/*"]}
+ ]}.

@@ -1,0 +1,16 @@
+.eunit
+deps
+*.o
+*.beam
+*.plt
+erl_crash.dump
+ebin/*.beam
+rel/example_project
+.concrete/DEV_MODE
+.rebar
+priv
+c_src/jerasure/
+c_src/gf-complete/
+doc/
+_build
+*.swp
