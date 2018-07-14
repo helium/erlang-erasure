@@ -30,11 +30,11 @@ else ifeq ($(UNAME_SYS), Linux)
 	CXXFLAGS ?= -O3 -finline-functions -Wall
 endif
 
-CFLAGS += -fPIC -I $(ERTS_INCLUDE_DIR) -I $(ERL_INTERFACE_INCLUDE_DIR) -Ijerasure/build/include -Ijerasure/build/include/jerasure
+CFLAGS += -fPIC -I $(ERTS_INCLUDE_DIR) -I $(ERL_INTERFACE_INCLUDE_DIR) -Ijerasure/build/include -Ijerasure/build/include/jerasure -Igf-complete/build/include
 
 CXXFLAGS += -fPIC -I $(ERTS_INCLUDE_DIR) -I $(ERL_INTERFACE_INCLUDE_DIR)
 
-LDLIBS += -L $(ERL_INTERFACE_LIB_DIR) -lerl_interface -lei -Ljerasure/build/lib -Wl,-Bstatic -lJerasure -lgf_complete -Wl,-Bdynamic
+LDLIBS += -L $(ERL_INTERFACE_LIB_DIR) -lerl_interface -lei -Ljerasure/build/lib -Lgf-complete/build/lib -Wl,-Bstatic -lJerasure -lgf_complete -Wl,-Bdynamic
 #LDLIBS += -L $(ERL_INTERFACE_LIB_DIR) -lerl_interface -lei -Ljerasure/build/lib -lJerasure
 LDFLAGS += -shared
 

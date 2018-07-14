@@ -45,7 +45,7 @@ fi
 if [ ! -d build ]; then
     mkdir build
     autoreconf --force --install
-    LDFLAGS="-L../../gf-complete/build/lib -fPIC" CPPFLAGS="-I../../gf-complete/include" ./configure --prefix=`pwd`/build --enable-static --with-pic
+    LDFLAGS="-L`pwd`/../gf-complete/build/lib -fPIC" CPPFLAGS="-I`pwd`/../gf-complete/build/include" ./configure --prefix=`pwd`/build --enable-static --with-pic
 fi
 make -j
 make install
