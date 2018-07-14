@@ -9,7 +9,7 @@
 -define(APPNAME, erasure).
 -define(LIBNAME, 'erasure').
 
--spec encode(K :: pos_integer(), M :: pos_integer(), binary()) -> [{Index :: non_neg_integer(), TotalSize :: pos_integer(), binary()}, ...].
+-spec encode(K :: pos_integer(), M :: pos_integer(), binary()) -> {ok, [{Index :: non_neg_integer(), TotalSize :: pos_integer(), binary()}, ...]}.
 encode(_, _, _) ->
     not_loaded(?LINE).
 
