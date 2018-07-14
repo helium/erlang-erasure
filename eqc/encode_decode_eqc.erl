@@ -5,27 +5,29 @@
 -export([prop_encode_decode_match/0]).
 
 prop_encode_decode_match() ->
-    ?FORALL({Players, Threshold}, gen_players_threshold(),
+    ?FORALL(Players, gen_players(),
             begin
-                K = 2*Threshold,
+                F = (Players - 1) div 3,
+                Threshold = F,
+                K = 2*F,
                 M = Players - K,
-                Bin = crypto:hash(sha256, crypto:strong_rand_bytes(128)),
+                Bin = crypto:strong_rand_bytes(Players*4),
                 {ok, Shards} = erasure:encode(K, M, Bin),
                 {ok, DecodedBin} = erasure:decode(K, M, Shards),
                 ?WHENFAIL(begin
                               io:format("Players: ~p, Threshold: ~p, K: ~p, M: ~p~n", [Players, Threshold, K, M]),
-                              io:format("Bin: ~p", [Bin]),
-                              io:format("Shards: ~p", [Shards]),
-                              io:format("Decoded: ~p", [DecodedBin])
+                              io:format("Bin: ~p~n", [Bin]),
+                              io:format("Shards: ~p~n", [Shards]),
+                              io:format("Decoded: ~p~n", [DecodedBin])
                           end,
                           conjunction([
                                        {encode_decode_equality, eqc:equals(Bin, DecodedBin)}
                                       ]))
             end).
 
-gen_players_threshold() ->
-    ?SUCHTHAT({Players, Threshold},
-              ?LET({X, Y},
-                   ?SUCHTHAT({A, B}, {int(), int()}, A > 0 andalso B >= 0 andalso A > B),
-                   {X*3, X - Y}),
-              Players > 3*Threshold+1 andalso Threshold > 1).
+gen_players() ->
+    %?SUCHTHAT(Players,
+              %?LET(X,
+                   ?SUCHTHAT(A, int(), A > 4 andalso A < 70).
+                   %X).
+              %Players > 3*Threshold+1 andalso Threshold > 1).

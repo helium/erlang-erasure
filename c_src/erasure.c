@@ -59,20 +59,27 @@ encode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
         }
     }
 
+    int bytes_per_shard = input.size / k;
+    int extra_bytes = input.size % k;
+
 
     char *shards[k+m];
 
+    unsigned char *p = input.data;
     for (int i = 0; i < k+m; i++) {
         shards[i] = (char *)malloc(sizeof(char)*blocksize);
         memset(shards[i], 0, blocksize);
         if (i < k) {
-            if (i == 0) {
-                memcpy(shards[i]+remainder, input.data+(i*(blocksize)), blocksize - remainder);
-            } else {
-                memcpy(shards[i], input.data-remainder+(i*(blocksize)), blocksize);
+            memcpy(shards[i], p, bytes_per_shard);
+            p += bytes_per_shard;
+            if (extra_bytes > 0) {
+                memcpy(shards[i]+bytes_per_shard, p, 1);
+                p++;
+                extra_bytes--;
             }
         }
     }
+
 
     int w = 8;
     int *matrix = reed_sol_vandermonde_coding_matrix(k, m, w);
@@ -188,6 +195,9 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     erasures = malloc(sizeof(int)*(k+m));
     int j = 0;
 
+    int bytes_per_shard = totalsize / k;
+    int extra_bytes = totalsize % k;
+
     // calculate the missing shards and fill them in with 0s
     for (int i = 0; i < k+m; i++) {
         if (shards[i] == NULL) {
@@ -211,12 +221,16 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
 
     ERL_NIF_TERM decoded;
     unsigned char* decoded_data = enif_make_new_binary(env, totalsize, &decoded);
+    memset(decoded_data, 0, totalsize);
+    unsigned char *p = decoded_data;
 
     for (int i = 0; i < k; i++) {
-        if (i == 0) {
-            memcpy(decoded_data, shards[i]+remainder, blocksize - remainder);
-        } else {
-            memcpy(decoded_data-remainder+(i*blocksize), shards[i], blocksize);
+        memcpy(p, shards[i], bytes_per_shard);
+        p += bytes_per_shard;
+        if (extra_bytes > 0) {
+            memcpy(p, shards[i]+bytes_per_shard, 1);
+            extra_bytes--;
+            p++;
         }
     }
 

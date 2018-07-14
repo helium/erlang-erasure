@@ -23,8 +23,11 @@ if [ ! -d build ]; then
     ./autogen.sh
     ./configure --prefix=`pwd`/build --with-pic
 fi
-make -j
-make install
+
+if [ ! -f build/lib/libgf_complete.a ]; then
+    make -j
+    make install
+fi
 
 cd ../..
 
@@ -47,5 +50,8 @@ if [ ! -d build ]; then
     autoreconf --force --install
     LDFLAGS="-L`pwd`/../gf-complete/build/lib -fPIC" CPPFLAGS="-I`pwd`/../gf-complete/build/include" ./configure --prefix=`pwd`/build --enable-static --with-pic
 fi
-make -j
-make install
+
+if [ ! -f build/lib/libJerasure.a ]; then
+    make -j
+    make install
+fi
