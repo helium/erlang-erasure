@@ -13,7 +13,7 @@
 encode(_, _, _) ->
     not_loaded(?LINE).
 
--spec decode(K :: pos_integer(), M :: pos_integer(), Shards :: [{Index :: non_neg_integer(), TotalSize :: pos_integer(), binary()}, ...]) -> binary().
+-spec decode(K :: pos_integer(), M :: pos_integer(), Shards :: [{Index :: non_neg_integer(), TotalSize :: pos_integer(), binary()}, ...]) -> {ok, binary()} | {error, any()}.
 decode(_, _, _) ->
     not_loaded(?LINE).
 

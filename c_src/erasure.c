@@ -100,6 +100,7 @@ static ERL_NIF_TERM
 decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
 {
     int k;
+    ERL_NIF_TERM result;
     if (!enif_get_int(env, argv[0], &k))
     {
         return enif_make_badarg(env);
@@ -115,16 +116,14 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     if (!enif_is_list(env, argv[2]) || !enif_get_list_length(env, argv[2], &len) || len < k)
     {
         // need at least K shards, sorry
-        // TODO return a better error here
-        printf("too few shards\n");
-        return enif_make_badarg(env);
+        return enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "insufficent_shards"));
     }
 
-    char *shards[k+m];
+    char **shards = malloc(sizeof(char*)*(k+m));
+    int *erasures = NULL;
 
     for (int i = 0; i < k+m; i++) {
         shards[i] = NULL;
-        /*memset(shards[i], 0, blocksize);*/
     }
 
     // all the shards must be the same size
@@ -137,26 +136,25 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     while (enif_get_list_cell(env, tail, &head, &tail))
     {
         if (!enif_get_tuple(env, head, &arity, &tuple) || arity != 3) {
-            // TODO cleanup
-            printf("bad arity\n");
-            return enif_make_badarg(env);
+            result = enif_make_badarg(env);
+            goto cleanup;
         }
-        if (!enif_get_int(env, tuple[0], &id) || id < 0 || id >= k+m) { // || shards[id] != NULL) {
-            // TODO cleanup
-            printf("bad id %d\n", id);
-            return enif_make_badarg(env);
+        if (!enif_get_int(env, tuple[0], &id) || id < 0 || id >= k+m) {
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "invalid_shard_id"));
+            goto cleanup;
+        }
+        if (shards[id] != NULL) {
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "duplicate_shard_id"));
+            goto cleanup;
         }
         if (!enif_get_int(env, tuple[1], &totalsize) || totalsize <= 0) {
-            // TODO cleanup
-            printf("bad totalsize\n");
-            return enif_make_badarg(env);
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "invalid_total_size"));
+            goto cleanup;
         }
         if (lasttotalsize != 0 && totalsize != lasttotalsize) {
-            // TODO cleanup
-            printf("inconsistent totalsize\n");
-            return enif_make_badarg(env);
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "inconsistent_total_size"));
+            goto cleanup;
         }
-        /*printf("lol %d\n", id);*/
         lasttotalsize=totalsize;
 
         if (blocksize == 0) {
@@ -174,19 +172,20 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
                 }
             }
         }
-        shards[id] = (char *)malloc(sizeof(char)*blocksize);
-        memset(shards[id], 0, blocksize);
 
         ErlNifBinary input;
         if (!enif_is_binary(env, tuple[2]) || !enif_inspect_binary(env, tuple[2], &input))
         {
-            printf("bad shard\n");
-            return enif_make_badarg(env);
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "invalid shard"));
+            goto cleanup;
         }
+
+        shards[id] = (char *)malloc(sizeof(char)*blocksize);
+        memset(shards[id], 0, blocksize);
         memcpy(shards[id], input.data, blocksize);
     }
 
-    int erasures[k+m];
+    erasures = malloc(sizeof(int)*(k+m));
     int j = 0;
 
     // calculate the missing shards and fill them in with 0s
@@ -205,24 +204,38 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     int res = jerasure_matrix_decode(k, m, w, matrix, 1, erasures, shards, shards+k, blocksize);
 
     if (res == -1) {
-        // TODO cleanup
-        printf("decode failed\n");
-        return enif_make_badarg(env);
+        result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "decode_failed"));
+        goto cleanup;
     }
 
 
-    ErlNifBinary result;
-    enif_alloc_binary(totalsize, &result);
+    ErlNifBinary decoded;
+    enif_alloc_binary(totalsize, &decoded);
 
     for (int i = 0; i < k; i++) {
         if (i == 0) {
-            memcpy(result.data, shards[i]+remainder, blocksize - remainder);
+            memcpy(decoded.data, shards[i]+remainder, blocksize - remainder);
         } else {
-            memcpy(result.data-remainder+(i*blocksize), shards[i], blocksize);
+            memcpy(decoded.data-remainder+(i*blocksize), shards[i], blocksize);
         }
     }
 
-    return enif_make_binary(env, &result);
+    result = enif_make_tuple2(env, enif_make_atom(env, "ok"), enif_make_binary(env, &decoded));
+
+cleanup:
+
+    for (int i = 0; i < k+m; i++) {
+        if (shards[i] != NULL) {
+            free(shards[i]);
+        }
+    }
+
+    free(shards);
+    if (erasures != NULL) {
+        free(erasures);
+    }
+
+    return result;
 }
 
 static ErlNifFunc nif_funcs[] =
