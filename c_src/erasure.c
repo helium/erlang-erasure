@@ -93,7 +93,7 @@ encode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
                     enif_make_binary(env, &binary)
                     ), list);
     }
-    return list;
+    return enif_make_tuple2(env, enif_make_atom(env, "ok"), list);
 }
 
 static ERL_NIF_TERM
