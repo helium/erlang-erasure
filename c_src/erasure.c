@@ -80,17 +80,17 @@ encode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
 
     ERL_NIF_TERM list = enif_make_list(env, 0);
 
-    ErlNifBinary binary;
     for (int i = k+m - 1; i >= 0; i--) 
     {
-        enif_alloc_binary(blocksize, &binary);
-        memcpy(binary.data, shards[i], blocksize);
+        ERL_NIF_TERM binary;
+        unsigned char *bindata = enif_make_new_binary(env, blocksize, &binary);
+        memcpy(bindata, shards[i], blocksize);
         free(shards[i]);
         list = enif_make_list_cell(env,
                 enif_make_tuple3(env,
                     enif_make_int(env, i),
                     enif_make_int(env, input.size),
-                    enif_make_binary(env, &binary)
+                    binary
                     ), list);
     }
     return enif_make_tuple2(env, enif_make_atom(env, "ok"), list);
@@ -209,18 +209,18 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     }
 
 
-    ErlNifBinary decoded;
-    enif_alloc_binary(totalsize, &decoded);
+    ERL_NIF_TERM decoded;
+    unsigned char* decoded_data = enif_make_new_binary(env, totalsize, &decoded);
 
     for (int i = 0; i < k; i++) {
         if (i == 0) {
-            memcpy(decoded.data, shards[i]+remainder, blocksize - remainder);
+            memcpy(decoded_data, shards[i]+remainder, blocksize - remainder);
         } else {
-            memcpy(decoded.data-remainder+(i*blocksize), shards[i], blocksize);
+            memcpy(decoded_data-remainder+(i*blocksize), shards[i], blocksize);
         }
     }
 
-    result = enif_make_tuple2(env, enif_make_atom(env, "ok"), enif_make_binary(env, &decoded));
+    result = enif_make_tuple2(env, enif_make_atom(env, "ok"), decoded);
 
 cleanup:
 
