@@ -9,7 +9,7 @@ clean:
 	$(REBAR) clean
 
 test:
-	$(REBAR) as test do ct
+	$(REBAR) eqc -n 100
 
 typecheck:
 	$(REBAR) dialyzer
