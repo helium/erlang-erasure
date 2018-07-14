@@ -174,9 +174,9 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
         }
 
         ErlNifBinary input;
-        if (!enif_is_binary(env, tuple[2]) || !enif_inspect_binary(env, tuple[2], &input))
+        if (!enif_is_binary(env, tuple[2]) || !enif_inspect_binary(env, tuple[2], &input) || input.size != blocksize)
         {
-            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "invalid shard"));
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "invalid_shard"));
             goto cleanup;
         }
 
