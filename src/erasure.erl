@@ -9,11 +9,13 @@
 -define(APPNAME, erasure).
 -define(LIBNAME, 'erasure').
 
--spec encode(K :: pos_integer(), M :: pos_integer(), binary()) -> {ok, [{Index :: non_neg_integer(), TotalSize :: pos_integer(), binary()}, ...]}.
+-type shards() :: [{Index :: non_neg_integer(), TotalSize :: pos_integer(), binary()}, ...].
+
+-spec encode(K :: pos_integer(), M :: pos_integer(), binary()) -> {ok, shards()}.
 encode(_, _, _) ->
     not_loaded(?LINE).
 
--spec decode(K :: pos_integer(), M :: pos_integer(), Shards :: [{Index :: non_neg_integer(), TotalSize :: pos_integer(), binary()}, ...]) -> {ok, binary()} | {error, any()}.
+-spec decode(K :: pos_integer(), M :: pos_integer(), Shards :: shards()) -> {ok, binary()} | {error, any()}.
 decode(_, _, _) ->
     not_loaded(?LINE).
 

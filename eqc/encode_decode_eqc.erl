@@ -10,12 +10,12 @@ prop_encode_decode_match() ->
                 K = 2*Threshold,
                 M = Players - K,
                 Bin = crypto:hash(sha256, crypto:strong_rand_bytes(128)),
-                Encoded = erasure:encode(K, M, Bin),
-                {ok, DecodedBin} = erasure:decode(K, M, Encoded),
+                {ok, Shards} = erasure:encode(K, M, Bin),
+                {ok, DecodedBin} = erasure:decode(K, M, Shards),
                 ?WHENFAIL(begin
                               io:format("Players: ~p, Threshold: ~p, K: ~p, M: ~p~n", [Players, Threshold, K, M]),
                               io:format("Bin: ~p", [Bin]),
-                              io:format("Encoded: ~p", [Encoded]),
+                              io:format("Shards: ~p", [Shards]),
                               io:format("Decoded: ~p", [DecodedBin])
                           end,
                           conjunction([
