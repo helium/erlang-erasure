@@ -26,8 +26,4 @@ prop_encode_decode_match() ->
             end).
 
 gen_players() ->
-    %?SUCHTHAT(Players,
-              %?LET(X,
-                   ?SUCHTHAT(A, int(), A > 4 andalso A < 70).
-                   %X).
-              %Players > 3*Threshold+1 andalso Threshold > 1).
+    ?SUCHTHAT(A, int(), A > 4 andalso A < 70).
