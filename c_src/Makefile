@@ -14,28 +14,31 @@ C_SRC_OUTPUT ?= $(CURDIR)/../priv/$(PROJECT).so
 
 # System type and C compiler/flags.
 
+LDLIBS += -L $(ERL_INTERFACE_LIB_DIR) -lerl_interface -lei
+
 UNAME_SYS := $(shell uname -s)
 ifeq ($(UNAME_SYS), Darwin)
 	CC ?= cc
 	CFLAGS ?= -O3 -std=c99 -arch x86_64 -finline-functions -Wall -Wmissing-prototypes
 	CXXFLAGS ?= -O3 -arch x86_64 -finline-functions -Wall
 	LDFLAGS ?= -arch x86_64 -flat_namespace -undefined suppress
+	LDLIBS += gf-complete/build/lib/libgf_complete.a jerasure/build/lib/libJerasure.a
 else ifeq ($(UNAME_SYS), FreeBSD)
 	CC ?= cc
 	CFLAGS ?= -O3 -std=c99 -finline-functions -Wall -Wmissing-prototypes
 	CXXFLAGS ?= -O3 -finline-functions -Wall
+	LDLIBS += -Ljerasure/build/lib -Lgf-complete/build/lib -Wl,-Bstatic -lJerasure -lgf_complete -Wl,-Bdynamic
 else ifeq ($(UNAME_SYS), Linux)
 	CC ?= gcc
 	CFLAGS ?= -O3 -std=c99 -finline-functions -Wall -Wmissing-prototypes
 	CXXFLAGS ?= -O3 -finline-functions -Wall
+	LDLIBS += -Ljerasure/build/lib -Lgf-complete/build/lib -Wl,-Bstatic -lJerasure -lgf_complete -Wl,-Bdynamic
 endif
 
 CFLAGS += -std=c99 -fPIC -I $(ERTS_INCLUDE_DIR) -I $(ERL_INTERFACE_INCLUDE_DIR) -Ijerasure/build/include -Ijerasure/build/include/jerasure -Igf-complete/build/include
 
 CXXFLAGS += -fPIC -I $(ERTS_INCLUDE_DIR) -I $(ERL_INTERFACE_INCLUDE_DIR)
 
-LDLIBS += -L $(ERL_INTERFACE_LIB_DIR) -lerl_interface -lei -Ljerasure/build/lib -Lgf-complete/build/lib -Wl,-Bstatic -lJerasure -lgf_complete -Wl,-Bdynamic
-#LDLIBS += -L $(ERL_INTERFACE_LIB_DIR) -lerl_interface -lei -Ljerasure/build/lib -lJerasure
 LDFLAGS += -shared
 
 # Verbosity.
