@@ -35,3 +35,19 @@ init() ->
 
 not_loaded(Line) ->
     erlang:nif_error({not_loaded, [{module, ?MODULE}, {line, Line}]}).
+
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+simple_test() ->
+    Data = <<"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi nec nisi interdum, ultricies mauris eget, congue ante. Fusce erat diam, lacinia eu volutpat ut, gravida quis justo. Maecenas sagittis, ligula.">>,
+    {ok, Shards} = encode(5, 2, Data),
+    ?assertEqual({ok, Data}, decode(5, 2, Shards)),
+    ?assertEqual({ok, Data}, decode(5, 2, lists:sublist(Shards, 5))),
+    ?assertEqual({ok, Data}, decode(5, 2, lists:reverse(lists:sublist(Shards, 5)))),
+    ?assertMatch({error, _}, decode(5, 2, lists:sublist(Shards, 4))),
+    ?assertMatch({error, _}, decode(5, 2, lists:sublist(Shards, 4) ++ [hd(Shards)])),
+    ok.
+
+-endif.
