@@ -66,8 +66,8 @@ encode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     int extra_bytes = input.size % k;
 
     char *shards = calloc(k+m, blockspacing);
-    char **data_ptrs = calloc(k, sizeof(char*));
-    char **coding_ptrs = calloc(m, sizeof(char*));
+    char *data_ptrs[k];
+    char *coding_ptrs[m];
 
     unsigned char *p = input.data;
     for (int i = 0; i < k+m; i++) {
@@ -106,8 +106,6 @@ encode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
                     ), list);
     }
     free(shards);
-    free(data_ptrs);
-    free(coding_ptrs);
     return enif_make_tuple2(env, enif_make_atom(env, "ok"), list);
 }
 
@@ -135,8 +133,8 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     }
 
     char *shards = NULL;
-    char **data_ptrs = calloc(k, sizeof(char*));
-    char **coding_ptrs = calloc(m, sizeof(char*));
+    char *data_ptrs[k];
+    char *coding_ptrs[m];
 
     int *erasures = NULL;
 
@@ -268,8 +266,6 @@ cleanup:
     if (shards != NULL) {
         free(shards);
     }
-    free(coding_ptrs);
-    free(data_ptrs);
     if (erasures != NULL) {
         free(erasures);
     }
