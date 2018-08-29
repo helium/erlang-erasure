@@ -41,13 +41,15 @@ not_loaded(Line) ->
 -include_lib("eunit/include/eunit.hrl").
 
 simple_test() ->
+    K = 7,
+    M = 3,
     Data = <<"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi nec nisi interdum, ultricies mauris eget, congue ante. Fusce erat diam, lacinia eu volutpat ut, gravida quis justo. Maecenas sagittis, ligula.">>,
-    {ok, Shards} = encode(5, 2, Data),
-    ?assertEqual({ok, Data}, decode(5, 2, Shards)),
-    ?assertEqual({ok, Data}, decode(5, 2, lists:sublist(Shards, 5))),
-    ?assertEqual({ok, Data}, decode(5, 2, lists:reverse(lists:sublist(Shards, 5)))),
-    ?assertMatch({error, _}, decode(5, 2, lists:sublist(Shards, 4))),
-    ?assertMatch({error, _}, decode(5, 2, lists:sublist(Shards, 4) ++ [hd(Shards)])),
+    {ok, Shards} = encode(K, M, Data),
+    ?assertEqual({ok, Data}, decode(K, M, Shards)),
+    ?assertEqual({ok, Data}, decode(K, M, lists:sublist(Shards, K))),
+    ?assertEqual({ok, Data}, decode(K, M, lists:reverse(lists:sublist(Shards, K)))),
+    ?assertMatch({error, _}, decode(K, M, lists:sublist(Shards, K - 1))),
+    ?assertMatch({error, _}, decode(K, M, lists:sublist(Shards, K - 1) ++ [hd(Shards)])),
     ok.
 
 -endif.

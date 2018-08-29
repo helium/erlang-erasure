@@ -59,31 +59,37 @@ encode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
         }
     }
 
+    // block spacing has to be a multiple of 16
+    int blockspacing = blocksize + (16 - (blocksize % 16));
+
     int bytes_per_shard = input.size / k;
     int extra_bytes = input.size % k;
 
-
-    char *shards[k+m];
+    char *shards = calloc(k+m, blockspacing);
+    char *data_ptrs[k];
+    char *coding_ptrs[m];
 
     unsigned char *p = input.data;
     for (int i = 0; i < k+m; i++) {
-        shards[i] = (char *)malloc(sizeof(char)*blocksize);
-        memset(shards[i], 0, blocksize);
+        memset(shards+(blockspacing*i), 0, blockspacing);
         if (i < k) {
-            memcpy(shards[i], p, bytes_per_shard);
+            data_ptrs[i] = shards+(blockspacing*i);
+            memcpy(shards+(blockspacing*i), p, bytes_per_shard);
             p += bytes_per_shard;
             if (extra_bytes > 0) {
-                memcpy(shards[i]+bytes_per_shard, p, 1);
+                memcpy(shards+(blockspacing*i)+bytes_per_shard, p, 1);
                 p++;
                 extra_bytes--;
             }
+        } else {
+            coding_ptrs[i-k] = shards+(blockspacing*i);
         }
     }
 
 
     int w = 8;
     int *matrix = reed_sol_vandermonde_coding_matrix(k, m, w);
-    jerasure_matrix_encode(k, m, w, matrix, shards, shards+k, blocksize);
+    jerasure_matrix_encode(k, m, w, matrix, data_ptrs, coding_ptrs, blocksize);
 
     ERL_NIF_TERM list = enif_make_list(env, 0);
 
@@ -91,8 +97,7 @@ encode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     {
         ERL_NIF_TERM binary;
         unsigned char *bindata = enif_make_new_binary(env, blocksize, &binary);
-        memcpy(bindata, shards[i], blocksize);
-        free(shards[i]);
+        memcpy(bindata, shards+(blockspacing*i), blocksize);
         list = enif_make_list_cell(env,
                 enif_make_tuple3(env,
                     enif_make_int(env, i),
@@ -100,6 +105,7 @@ encode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
                     binary
                     ), list);
     }
+    free(shards);
     return enif_make_tuple2(env, enif_make_atom(env, "ok"), list);
 }
 
@@ -126,11 +132,18 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "insufficent_shards"));
     }
 
-    char **shards = malloc(sizeof(char*)*(k+m));
+    char *shards = NULL;
+    char *data_ptrs[k];
+    char *coding_ptrs[m];
+
     int *erasures = NULL;
 
-    for (int i = 0; i < k+m; i++) {
-        shards[i] = NULL;
+    for (int i = 0; i < k; i++) {
+        data_ptrs[i] = NULL;
+    }
+
+    for (int i = 0; i < m; i++) {
+        coding_ptrs[i] = NULL;
     }
 
     // all the shards must be the same size
@@ -138,7 +151,7 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     ERL_NIF_TERM head, tail;
     const ERL_NIF_TERM *tuple;
     int arity, id, totalsize, lasttotalsize = 0;
-    int padding, blocksize = 0, remainder=0;
+    int padding, blocksize = 0, remainder=0, blockspacing=0;
     tail = argv[2];
     while (enif_get_list_cell(env, tail, &head, &tail))
     {
@@ -150,7 +163,7 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
             result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "invalid_shard_id"));
             goto cleanup;
         }
-        if (shards[id] != NULL) {
+        if ((id < k && data_ptrs[id] != NULL) || ( id >=k && coding_ptrs[id-k] != NULL)) {
             result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "duplicate_shard_id"));
             goto cleanup;
         }
@@ -178,6 +191,9 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
                     padding++;
                 }
             }
+            // block spacing has to be a multiple of 16
+            blockspacing = blocksize + (16 - (blocksize % 16));
+            shards = calloc(k+m, blockspacing);
         }
 
         ErlNifBinary input;
@@ -187,37 +203,46 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
             goto cleanup;
         }
 
-        shards[id] = (char *)malloc(sizeof(char)*blocksize);
-        memset(shards[id], 0, blocksize);
-        memcpy(shards[id], input.data, blocksize);
+        if (id < k) {
+            data_ptrs[id] = shards+(blockspacing*id);
+        } else {
+            coding_ptrs[id-k] = shards+(blockspacing*id);
+        }
+
+        memset(shards+(blockspacing*id), 0, blockspacing);
+        memcpy(shards+(blockspacing*id), input.data, blocksize);
     }
 
-    erasures = malloc(sizeof(int)*(k+m));
+    erasures = calloc(k+m, sizeof(int));
     int j = 0;
 
     int bytes_per_shard = totalsize / k;
     int extra_bytes = totalsize % k;
 
-    // calculate the missing shards and fill them in with 0s
+    // calculate the missing shards and track them in the erasures array
     for (int i = 0; i < k+m; i++) {
-        if (shards[i] == NULL) {
+        if ((i < k && data_ptrs[i] == NULL) || (i >= k && coding_ptrs[i-k] == NULL)) {
+            // set up any missing data or coding pointers
+            if (i < k && data_ptrs[i] == NULL) {
+                data_ptrs[i] = shards+(blockspacing*i);
+            } else if (i >= k && coding_ptrs[i-k] == NULL) {
+                coding_ptrs[i-k] = shards+(blockspacing*i);
+            }
             erasures[j] = i;
             j++;
-            shards[i] = (char *)malloc(sizeof(char)*blocksize);
-            memset(shards[i], 0, blocksize);
         }
     }
     erasures[j] = -1;
 
     int w = 8;
     int *matrix = reed_sol_vandermonde_coding_matrix(k, m, w);
-    int res = jerasure_matrix_decode(k, m, w, matrix, 1, erasures, shards, shards+k, blocksize);
+    int res = jerasure_matrix_decode(k, m, w, matrix, 1, erasures, data_ptrs, coding_ptrs, blocksize);
+    //abort();
 
     if (res == -1) {
         result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "decode_failed"));
         goto cleanup;
     }
-
 
     ERL_NIF_TERM decoded;
     unsigned char* decoded_data = enif_make_new_binary(env, totalsize, &decoded);
@@ -225,10 +250,10 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     unsigned char *p = decoded_data;
 
     for (int i = 0; i < k; i++) {
-        memcpy(p, shards[i], bytes_per_shard);
+        memcpy(p, shards+(blockspacing*i), bytes_per_shard);
         p += bytes_per_shard;
         if (extra_bytes > 0) {
-            memcpy(p, shards[i]+bytes_per_shard, 1);
+            memcpy(p, shards+(blockspacing*i)+bytes_per_shard, 1);
             extra_bytes--;
             p++;
         }
@@ -238,13 +263,9 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
 
 cleanup:
 
-    for (int i = 0; i < k+m; i++) {
-        if (shards[i] != NULL) {
-            free(shards[i]);
-        }
+    if (shards != NULL) {
+        free(shards);
     }
-
-    free(shards);
     if (erasures != NULL) {
         free(erasures);
     }
