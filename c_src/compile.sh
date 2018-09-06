@@ -5,7 +5,7 @@ JE_VERSION="de1739cc8483696506829b52e7fda4f6bb195e6a"
 
 
 if [ ! -d c_src/gf-complete ]; then
-    git clone http://lab.jerasure.org/jerasure/gf-complete.git c_src/gf-complete
+    git clone http://github.com/ceph/gf-complete.git c_src/gf-complete
 fi
 
 cd c_src/gf-complete
@@ -32,7 +32,7 @@ fi
 cd ../..
 
 if [ ! -d c_src/jerasure ]; then
-    git clone http://lab.jerasure.org/jerasure/jerasure.git c_src/jerasure
+    git clone http://github.com/ceph/jerasure.git c_src/jerasure
 fi
 
 cd c_src/jerasure
