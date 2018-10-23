@@ -106,6 +106,7 @@ encode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
                     ), list);
     }
     free(shards);
+    free(matrix);
     return enif_make_tuple2(env, enif_make_atom(env, "ok"), list);
 }
 
@@ -132,6 +133,7 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "insufficent_shards"));
     }
 
+    int *matrix = NULL;
     char *shards = NULL;
     char *data_ptrs[k];
     char *coding_ptrs[m];
@@ -235,7 +237,7 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     erasures[j] = -1;
 
     int w = 8;
-    int *matrix = reed_sol_vandermonde_coding_matrix(k, m, w);
+    matrix = reed_sol_vandermonde_coding_matrix(k, m, w);
     int res = jerasure_matrix_decode(k, m, w, matrix, 1, erasures, data_ptrs, coding_ptrs, blocksize);
     //abort();
 
@@ -263,6 +265,9 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
 
 cleanup:
 
+    if (matrix != NULL) {
+        free(matrix);
+    }
     if (shards != NULL) {
         free(shards);
     }
