@@ -18,7 +18,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <jerasure.h>
-#include <reed_sol.h>
+#include <cauchy.h>
 
 static ERL_NIF_TERM ATOM_TRUE;
 static ERL_NIF_TERM ATOM_FALSE;
@@ -88,12 +88,12 @@ encode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
 
 
     int w = 8;
-    int *matrix = reed_sol_vandermonde_coding_matrix(k, m, w);
+    int *matrix = cauchy_good_general_coding_matrix(k, m, w);
     jerasure_matrix_encode(k, m, w, matrix, data_ptrs, coding_ptrs, blocksize);
 
     ERL_NIF_TERM list = enif_make_list(env, 0);
 
-    for (int i = k+m - 1; i >= 0; i--) 
+    for (int i = k+m - 1; i >= 0; i--)
     {
         ERL_NIF_TERM binary;
         unsigned char *bindata = enif_make_new_binary(env, blocksize, &binary);
@@ -237,7 +237,7 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     erasures[j] = -1;
 
     int w = 8;
-    matrix = reed_sol_vandermonde_coding_matrix(k, m, w);
+    matrix = cauchy_good_general_coding_matrix(k, m, w);
     int res = jerasure_matrix_decode(k, m, w, matrix, 1, erasures, data_ptrs, coding_ptrs, blocksize);
     //abort();
 
