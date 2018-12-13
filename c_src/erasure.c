@@ -112,6 +112,101 @@ encode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     return enif_make_tuple2(env, enif_make_atom(env, "ok"), list);
 }
 
+
+// ==================================================================
+// Encode using the Good general cauchy matrix
+
+static ERL_NIF_TERM
+encode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
+{
+    int k;
+    if (!enif_get_int(env, argv[0], &k))
+    {
+        return enif_make_badarg(env);
+    }
+
+    int m;
+    if (!enif_get_int(env, argv[1], &m))
+    {
+        return enif_make_badarg(env);
+    }
+
+    ErlNifBinary input;
+    if (!enif_is_binary(env, argv[2]) || !enif_inspect_binary(env, argv[2], &input))
+    {
+        return enif_make_badarg(env);
+    }
+
+    int blocksize = input.size / k;
+    int padding = 0;
+    int remainder = input.size % k;
+
+    if (remainder != 0) {
+        // payload is not cleanly divible by K, we need to pad
+        padding = (k - (input.size % k));
+        blocksize = (input.size + padding) / k;
+        while (blocksize % sizeof(long) != 0) {
+            blocksize++;
+            padding++;
+        }
+    }
+
+    // block spacing has to be a multiple of 16
+    int blockspacing = blocksize + (16 - (blocksize % 16));
+
+    int bytes_per_shard = input.size / k;
+    int extra_bytes = input.size % k;
+
+    char *shards = calloc(k+m, blockspacing);
+    char *data_ptrs[k];
+    char *coding_ptrs[m];
+
+    unsigned char *p = input.data;
+    for (int i = 0; i < k+m; i++) {
+        memset(shards+(blockspacing*i), 0, blockspacing);
+        if (i < k) {
+            data_ptrs[i] = shards+(blockspacing*i);
+            memcpy(shards+(blockspacing*i), p, bytes_per_shard);
+            p += bytes_per_shard;
+            if (extra_bytes > 0) {
+                memcpy(shards+(blockspacing*i)+bytes_per_shard, p, 1);
+                p++;
+                extra_bytes--;
+            }
+        } else {
+            coding_ptrs[i-k] = shards+(blockspacing*i);
+        }
+    }
+
+    int *matrix, *bitmatrix, **schedule;
+
+    int w = ceil(log2(k + m));
+    matrix = cauchy_good_general_coding_matrix(k, m, w);
+    bitmatrix = jerasure_matrix_to_bitmatrix(k, m, w, matrix);
+    schedule = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix);
+    jerasure_schedule_encode(k, m, w, schedule, data_ptrs, coding_ptrs, w*sizeof(long), sizeof(long));
+
+    ERL_NIF_TERM list = enif_make_list(env, 0);
+
+    for (int i = k+m - 1; i >= 0; i--)
+    {
+        ERL_NIF_TERM binary;
+        unsigned char *bindata = enif_make_new_binary(env, blocksize, &binary);
+        memcpy(bindata, shards+(blockspacing*i), blocksize);
+        list = enif_make_list_cell(env,
+                enif_make_tuple3(env,
+                    enif_make_int(env, i),
+                    enif_make_int(env, input.size),
+                    binary
+                    ), list);
+    }
+    free(shards);
+    free(matrix);
+    return enif_make_tuple2(env, enif_make_atom(env, "ok"), list);
+}
+
+// ==================================================================
+
 static ERL_NIF_TERM
 decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
 {
@@ -282,6 +377,7 @@ cleanup:
 
 static ErlNifFunc nif_funcs[] =
     {{"encode", 3, encode, 0},
+     {"encode_gc", 3, encode_gc, 0},
      {"decode", 3, decode, 0}};
 
 #define ATOM(Id, Value)                                                        \

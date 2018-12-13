@@ -1,6 +1,7 @@
 -module(erasure).
 
 -export([encode/3,
+         encode_gc/3,
          decode/3
         ]).
 
@@ -13,6 +14,10 @@
 
 -spec encode(K :: pos_integer(), M :: pos_integer(), binary()) -> {ok, shards()}.
 encode(_, _, _) ->
+    not_loaded(?LINE).
+
+-spec encode_gc(K :: pos_integer(), M :: pos_integer(), binary()) -> {ok, shards()}.
+encode_gc(_, _, _) ->
     not_loaded(?LINE).
 
 -spec decode(K :: pos_integer(), M :: pos_integer(), Shards :: shards()) -> {ok, binary()} | {error, any()}.
@@ -35,21 +40,3 @@ init() ->
 
 not_loaded(Line) ->
     erlang:nif_error({not_loaded, [{module, ?MODULE}, {line, Line}]}).
-
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
-simple_test() ->
-    K = 7,
-    M = 3,
-    Data = <<"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi nec nisi interdum, ultricies mauris eget, congue ante. Fusce erat diam, lacinia eu volutpat ut, gravida quis justo. Maecenas sagittis, ligula.">>,
-    {ok, Shards} = encode(K, M, Data),
-    ?assertEqual({ok, Data}, decode(K, M, Shards)),
-    ?assertEqual({ok, Data}, decode(K, M, lists:sublist(Shards, K))),
-    ?assertEqual({ok, Data}, decode(K, M, lists:reverse(lists:sublist(Shards, K)))),
-    ?assertMatch({error, _}, decode(K, M, lists:sublist(Shards, K - 1))),
-    ?assertMatch({error, _}, decode(K, M, lists:sublist(Shards, K - 1) ++ [hd(Shards)])),
-    ok.
-
--endif.
