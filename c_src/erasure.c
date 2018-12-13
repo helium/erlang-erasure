@@ -19,6 +19,8 @@
 #include <string.h>
 #include <jerasure.h>
 #include <cauchy.h>
+#include <reed_sol.h>
+#include <math.h>
 
 static ERL_NIF_TERM ATOM_TRUE;
 static ERL_NIF_TERM ATOM_FALSE;
@@ -88,7 +90,7 @@ encode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
 
 
     int w = 8;
-    int *matrix = cauchy_good_general_coding_matrix(k, m, w);
+    int *matrix = reed_sol_vandermonde_coding_matrix(k, m, w);
     jerasure_matrix_encode(k, m, w, matrix, data_ptrs, coding_ptrs, blocksize);
 
     ERL_NIF_TERM list = enif_make_list(env, 0);
@@ -237,7 +239,7 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     erasures[j] = -1;
 
     int w = 8;
-    matrix = cauchy_good_general_coding_matrix(k, m, w);
+    matrix = reed_sol_vandermonde_coding_matrix(k, m, w);
     int res = jerasure_matrix_decode(k, m, w, matrix, 1, erasures, data_ptrs, coding_ptrs, blocksize);
     //abort();
 
