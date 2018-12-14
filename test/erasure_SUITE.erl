@@ -45,4 +45,5 @@ cauchy_test(Config) ->
     Data = proplists:get_value(data, Config),
     {ok, Shards} = erasure:encode_gc(K, M, Data),
     ct:pal("Shards: ~p", [Shards]),
+    ?assertEqual({ok, Data}, erasure:decode_gc(K, M, Shards)),
     ok.

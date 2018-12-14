@@ -2,7 +2,8 @@
 
 -export([encode/3,
          encode_gc/3,
-         decode/3
+         decode/3,
+         decode_gc/3
         ]).
 
 -on_load(init/0).
@@ -22,6 +23,10 @@ encode_gc(_, _, _) ->
 
 -spec decode(K :: pos_integer(), M :: pos_integer(), Shards :: shards()) -> {ok, binary()} | {error, any()}.
 decode(_, _, _) ->
+    not_loaded(?LINE).
+
+-spec decode_gc(K :: pos_integer(), M :: pos_integer(), Shards :: shards()) -> {ok, binary()} | {error, any()}.
+decode_gc(_, _, _) ->
     not_loaded(?LINE).
 
 init() ->

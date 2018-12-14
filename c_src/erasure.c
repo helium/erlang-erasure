@@ -360,25 +360,198 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
 
     result = enif_make_tuple2(env, enif_make_atom(env, "ok"), decoded);
 
-cleanup:
+    cleanup:
 
-    if (matrix != NULL) {
-        free(matrix);
-    }
-    if (shards != NULL) {
-        free(shards);
-    }
-    if (erasures != NULL) {
-        free(erasures);
+        if (matrix != NULL) {
+            free(matrix);
+        }
+        if (shards != NULL) {
+            free(shards);
+        }
+        if (erasures != NULL) {
+            free(erasures);
+        }
+
+        return result;
+}
+
+// ==================================================================
+// Decode using the Good general cauchy matrix
+
+static ERL_NIF_TERM
+decode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
+{
+    int k;
+    ERL_NIF_TERM result;
+    if (!enif_get_int(env, argv[0], &k))
+    {
+        return enif_make_badarg(env);
     }
 
-    return result;
+    int m;
+    if (!enif_get_int(env, argv[1], &m))
+    {
+        return enif_make_badarg(env);
+    }
+
+    unsigned len;
+    if (!enif_is_list(env, argv[2]) || !enif_get_list_length(env, argv[2], &len) || len < k)
+    {
+        // need at least K shards, sorry
+        return enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "insufficent_shards"));
+    }
+
+    int *matrix = NULL;
+    int *bitmatrix = NULL;
+    char *shards = NULL;
+    char *data_ptrs[k];
+    char *coding_ptrs[m];
+
+    int *erasures = NULL;
+
+    for (int i = 0; i < k; i++) {
+        data_ptrs[i] = NULL;
+    }
+
+    for (int i = 0; i < m; i++) {
+        coding_ptrs[i] = NULL;
+    }
+
+    // all the shards must be the same size
+    // and all the indices need to be in-bounds
+    ERL_NIF_TERM head, tail;
+    const ERL_NIF_TERM *tuple;
+    int arity, id, totalsize, lasttotalsize = 0;
+    int padding, blocksize = 0, remainder=0, blockspacing=0;
+    tail = argv[2];
+    while (enif_get_list_cell(env, tail, &head, &tail))
+    {
+        if (!enif_get_tuple(env, head, &arity, &tuple) || arity != 3) {
+            result = enif_make_badarg(env);
+            goto cleanup;
+        }
+        if (!enif_get_int(env, tuple[0], &id) || id < 0 || id >= k+m) {
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "invalid_shard_id"));
+            goto cleanup;
+        }
+        if ((id < k && data_ptrs[id] != NULL) || ( id >=k && coding_ptrs[id-k] != NULL)) {
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "duplicate_shard_id"));
+            goto cleanup;
+        }
+        if (!enif_get_int(env, tuple[1], &totalsize) || totalsize <= 0) {
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "invalid_total_size"));
+            goto cleanup;
+        }
+        if (lasttotalsize != 0 && totalsize != lasttotalsize) {
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "inconsistent_total_size"));
+            goto cleanup;
+        }
+        lasttotalsize=totalsize;
+
+        if (blocksize == 0) {
+            blocksize = totalsize / k;
+            padding = 0;
+
+            remainder = totalsize % k;
+            if (remainder != 0) {
+                // payload is not cleanly divible by K, we need to pad
+                padding = (k - (totalsize % k));
+                blocksize = (totalsize + padding) / k;
+                while (blocksize % sizeof(long) != 0) {
+                    blocksize++;
+                    padding++;
+                }
+            }
+            // block spacing has to be a multiple of 16
+            blockspacing = blocksize + (16 - (blocksize % 16));
+            shards = calloc(k+m, blockspacing);
+        }
+
+        ErlNifBinary input;
+        if (!enif_is_binary(env, tuple[2]) || !enif_inspect_binary(env, tuple[2], &input) || input.size != blocksize)
+        {
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "invalid_shard"));
+            goto cleanup;
+        }
+
+        if (id < k) {
+            data_ptrs[id] = shards+(blockspacing*id);
+        } else {
+            coding_ptrs[id-k] = shards+(blockspacing*id);
+        }
+
+        memset(shards+(blockspacing*id), 0, blockspacing);
+        memcpy(shards+(blockspacing*id), input.data, blocksize);
+    }
+
+    erasures = calloc(k+m, sizeof(int));
+    int j = 0;
+
+    int bytes_per_shard = totalsize / k;
+    int extra_bytes = totalsize % k;
+
+    // calculate the missing shards and track them in the erasures array
+    for (int i = 0; i < k+m; i++) {
+        if ((i < k && data_ptrs[i] == NULL) || (i >= k && coding_ptrs[i-k] == NULL)) {
+            // set up any missing data or coding pointers
+            if (i < k && data_ptrs[i] == NULL) {
+                data_ptrs[i] = shards+(blockspacing*i);
+            } else if (i >= k && coding_ptrs[i-k] == NULL) {
+                coding_ptrs[i-k] = shards+(blockspacing*i);
+            }
+            erasures[j] = i;
+            j++;
+        }
+    }
+    erasures[j] = -1;
+
+    int w = ceil(log2(k + m));
+    matrix = cauchy_good_general_coding_matrix(k, m, w);
+    bitmatrix = jerasure_matrix_to_bitmatrix(k, m, w, matrix);
+    int res = jerasure_schedule_decode_lazy(k, m, w, bitmatrix, erasures, data_ptrs, coding_ptrs, w*sizeof(long), sizeof(long), 1);
+
+    if (res == -1) {
+        result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "decode_failed"));
+        goto cleanup;
+    }
+
+    ERL_NIF_TERM decoded;
+    unsigned char* decoded_data = enif_make_new_binary(env, totalsize, &decoded);
+    memset(decoded_data, 0, totalsize);
+    unsigned char *p = decoded_data;
+
+    for (int i = 0; i < k; i++) {
+        memcpy(p, shards+(blockspacing*i), bytes_per_shard);
+        p += bytes_per_shard;
+        if (extra_bytes > 0) {
+            memcpy(p, shards+(blockspacing*i)+bytes_per_shard, 1);
+            extra_bytes--;
+            p++;
+        }
+    }
+
+    result = enif_make_tuple2(env, enif_make_atom(env, "ok"), decoded);
+
+    cleanup:
+
+        if (matrix != NULL) {
+            free(matrix);
+        }
+        if (shards != NULL) {
+            free(shards);
+        }
+        if (erasures != NULL) {
+            free(erasures);
+        }
+
+        return result;
 }
 
 static ErlNifFunc nif_funcs[] =
     {{"encode", 3, encode, 0},
      {"encode_gc", 3, encode_gc, 0},
-     {"decode", 3, decode, 0}};
+     {"decode", 3, decode, 0},
+     {"decode_gc", 3, decode_gc, 0}};
 
 #define ATOM(Id, Value)                                                        \
     {                                                                          \
