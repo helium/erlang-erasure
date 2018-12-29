@@ -157,7 +157,9 @@ encode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     int bytes_per_shard = input.size / k;
     int extra_bytes = input.size % k;
 
-    char *shards = calloc(k+m, blockspacing);
+    /* jerasure reads and writes past where you'd expect,
+     * so add some arbitrary padding to save us */
+    char *shards = calloc(k+m+10, blockspacing);
     char *data_ptrs[k];
     char *coding_ptrs[m];
 
@@ -182,8 +184,20 @@ encode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
 
     int w = ceil(log2(k + m));
     matrix = cauchy_good_general_coding_matrix(k, m, w);
+    if (matrix == NULL) {
+        free(shards);
+        return enif_make_badarg(env);
+    }
     bitmatrix = jerasure_matrix_to_bitmatrix(k, m, w, matrix);
+    if (bitmatrix == NULL) {
+        free(shards);
+        free(matrix);
+        return enif_make_badarg(env);
+    }
     schedule = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix);
+    if (schedule == NULL) {
+        return enif_make_badarg(env);
+    }
     jerasure_schedule_encode(k, m, w, schedule, data_ptrs, coding_ptrs, w*sizeof(long), sizeof(long));
 
     ERL_NIF_TERM list = enif_make_list(env, 0);
@@ -464,7 +478,8 @@ decode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
             }
             // block spacing has to be a multiple of 16
             blockspacing = blocksize + (16 - (blocksize % 16));
-            shards = calloc(k+m, blockspacing);
+            // Note more random padding
+            shards = calloc(k+m+1, blockspacing);
         }
 
         ErlNifBinary input;
@@ -507,8 +522,20 @@ decode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
 
     int w = ceil(log2(k + m));
     matrix = cauchy_good_general_coding_matrix(k, m, w);
+    if (matrix == NULL) {
+        result = enif_make_badarg(env);
+        goto cleanup;
+    }
     bitmatrix = jerasure_matrix_to_bitmatrix(k, m, w, matrix);
-    int res = jerasure_schedule_decode_lazy(k, m, w, bitmatrix, erasures, data_ptrs, coding_ptrs, w*sizeof(long), sizeof(long), 1);
+    if (bitmatrix == NULL) {
+        result = enif_make_badarg(env);
+        goto cleanup;
+    }
+    /* This works, but is slower */
+    /*int res = jerasure_bitmatrix_decode(k, m, w, bitmatrix, 0, erasures, data_ptrs, coding_ptrs, w*sizeof(long), sizeof(long));*/
+    /* This works but ONLY if you don't use smart mode (the last argument set to 1 uses smart mode)
+     * smart mode seems to mis-allocate memory for the smart schedule and that causes segfaults */
+    int res = jerasure_schedule_decode_lazy(k, m, w, bitmatrix, erasures, data_ptrs, coding_ptrs, w*sizeof(long), sizeof(long), 0);
 
     if (res == -1) {
         result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "decode_failed"));
