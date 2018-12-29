@@ -9,7 +9,7 @@ clean:
 	$(REBAR) clean
 
 test:
-	$(REBAR) eqc -n 100
+	$(REBAR) ct --verbose; $(REBAR) eqc -n 100
 
 typecheck:
 	$(REBAR) dialyzer
