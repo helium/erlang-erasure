@@ -379,7 +379,7 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
 
     result = enif_make_tuple2(env, enif_make_atom(env, "ok"), decoded);
 
-    cleanup:
+cleanup:
 
         if (matrix != NULL) {
             free(matrix);
@@ -569,7 +569,7 @@ decode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
 
     result = enif_make_tuple2(env, enif_make_atom(env, "ok"), decoded);
 
-    cleanup:
+cleanup:
 
         if (matrix != NULL) {
             free(matrix);
