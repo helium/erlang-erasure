@@ -7,13 +7,15 @@
 
 -export([
          simple_test/1,
-         cauchy_test/1
+         cauchy_test/1,
+         cauchy_higher_w_test/1
         ]).
 
 all() ->
     [
      simple_test,
-     cauchy_test
+     cauchy_test,
+     cauchy_higher_w_test
     ].
 
 
@@ -52,6 +54,19 @@ cauchy_test(Config) ->
     ?assertEqual({ok, Data}, erasure:decode_gc(K, M, lists:reverse(lists:sublist(Shards, K)))),
     ?assertMatch({error, _}, erasure:decode_gc(K, M, lists:sublist(Shards, K - 1))),
     ?assertMatch({error, _}, erasure:decode_gc(K, M, lists:sublist(Shards, K - 1) ++ [hd(Shards)])),
+    ?assertEqual({ok, Data}, erasure:decode_gc(K, M, W, Shards)),
+    ?assertEqual({ok, Data}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K))),
+    ?assertEqual({ok, Data}, erasure:decode_gc(K, M, W, lists:reverse(lists:sublist(Shards, K)))),
+    ?assertMatch({error, _}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K - 1))),
+    ?assertMatch({error, _}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K - 1) ++ [hd(Shards)])),
+    ok.
+
+cauchy_higher_w_test(Config) ->
+    K = proplists:get_value(k, Config),
+    M = proplists:get_value(m, Config),
+    W = proplists:get_value(w, Config) + 5,
+    Data = proplists:get_value(data, Config),
+    {ok, Shards} = erasure:encode_gc(K, M, W, Data),
     ?assertEqual({ok, Data}, erasure:decode_gc(K, M, W, Shards)),
     ?assertEqual({ok, Data}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K))),
     ?assertEqual({ok, Data}, erasure:decode_gc(K, M, W, lists:reverse(lists:sublist(Shards, K)))),
