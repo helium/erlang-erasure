@@ -131,13 +131,19 @@ encode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    ErlNifBinary input;
-    if (!enif_is_binary(env, argv[2]) || !enif_inspect_binary(env, argv[2], &input))
+    int w;
+    if (!enif_get_int(env, argv[2], &w))
     {
         return enif_make_badarg(env);
     }
 
-    int w = ceil(log2(k + m));
+
+    ErlNifBinary input;
+    if (!enif_is_binary(env, argv[3]) || !enif_inspect_binary(env, argv[3], &input))
+    {
+        return enif_make_badarg(env);
+    }
+
     int blocksize = input.size / k;
     int padding = 0;
     int remainder = input.size % k;
@@ -407,8 +413,14 @@ decode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
+    int w;
+    if (!enif_get_int(env, argv[2], &w))
+    {
+        return enif_make_badarg(env);
+    }
+
     unsigned len;
-    if (!enif_is_list(env, argv[2]) || !enif_get_list_length(env, argv[2], &len) || len < k)
+    if (!enif_is_list(env, argv[3]) || !enif_get_list_length(env, argv[3], &len) || len < k)
     {
         // need at least K shards, sorry
         return enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "insufficent_shards"));
@@ -430,15 +442,13 @@ decode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
         coding_ptrs[i] = NULL;
     }
 
-    int w = ceil(log2(k + m));
-
     // all the shards must be the same size
     // and all the indices need to be in-bounds
     ERL_NIF_TERM head, tail;
     const ERL_NIF_TERM *tuple;
     int arity, id, totalsize, lasttotalsize = 0;
     int padding, blocksize = 0, remainder=0, blockspacing=0;
-    tail = argv[2];
+    tail = argv[3];
     while (enif_get_list_cell(env, tail, &head, &tail))
     {
         if (!enif_get_tuple(env, head, &arity, &tuple) || arity != 3) {
@@ -576,9 +586,9 @@ decode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
 
 static ErlNifFunc nif_funcs[] =
     {{"encode", 3, encode, 0},
-     {"encode_gc", 3, encode_gc, 0},
+     {"encode_gc", 4, encode_gc, 0},
      {"decode", 3, decode, 0},
-     {"decode_gc", 3, decode_gc, 0}};
+     {"decode_gc", 4, decode_gc, 0}};
 
 #define ATOM(Id, Value)                                                        \
     {                                                                          \

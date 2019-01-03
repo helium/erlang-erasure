@@ -20,8 +20,9 @@ all() ->
 init_per_testcase(_, Config) ->
     K = 7,
     M = 3,
+    W = ceil(math:log2(K+M)),
     Data = <<"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi nec nisi interdum, ultricies mauris eget, congue ante. Fusce erat diam, lacinia eu volutpat ut, gravida quis justo. Maecenas sagittis, ligula.">>,
-    [ {k, K}, {m, M}, {data, Data} | Config].
+    [ {k, K}, {m, M}, {w, W}, {data, Data} | Config].
 
 end_per_testcase(_, _Config) ->
     ok.
@@ -31,7 +32,6 @@ simple_test(Config) ->
     M = proplists:get_value(m, Config),
     Data = proplists:get_value(data, Config),
     {ok, Shards} = erasure:encode(K, M, Data),
-    ct:pal("Shards: ~p", [Shards]),
     ?assertEqual({ok, Data}, erasure:decode(K, M, Shards)),
     ?assertEqual({ok, Data}, erasure:decode(K, M, lists:sublist(Shards, K))),
     ?assertEqual({ok, Data}, erasure:decode(K, M, lists:reverse(lists:sublist(Shards, K)))),
@@ -42,12 +42,19 @@ simple_test(Config) ->
 cauchy_test(Config) ->
     K = proplists:get_value(k, Config),
     M = proplists:get_value(m, Config),
+    W = proplists:get_value(w, Config),
     Data = proplists:get_value(data, Config),
-    {ok, Shards} = erasure:encode_gc(K, M, Data),
-    ct:pal("Shards: ~p", [Shards]),
+    {ok, Shards} = erasure:encode_gc(K, M, W, Data),
+    {ok, Shards2} = erasure:encode_gc(K, M, Data),
+    ?assertEqual(Shards2, Shards),
     ?assertEqual({ok, Data}, erasure:decode_gc(K, M, Shards)),
     ?assertEqual({ok, Data}, erasure:decode_gc(K, M, lists:sublist(Shards, K))),
     ?assertEqual({ok, Data}, erasure:decode_gc(K, M, lists:reverse(lists:sublist(Shards, K)))),
     ?assertMatch({error, _}, erasure:decode_gc(K, M, lists:sublist(Shards, K - 1))),
     ?assertMatch({error, _}, erasure:decode_gc(K, M, lists:sublist(Shards, K - 1) ++ [hd(Shards)])),
+    ?assertEqual({ok, Data}, erasure:decode_gc(K, M, W, Shards)),
+    ?assertEqual({ok, Data}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K))),
+    ?assertEqual({ok, Data}, erasure:decode_gc(K, M, W, lists:reverse(lists:sublist(Shards, K)))),
+    ?assertMatch({error, _}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K - 1))),
+    ?assertMatch({error, _}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K - 1) ++ [hd(Shards)])),
     ok.

@@ -41,11 +41,12 @@ prop_encode_decode_match_gc() ->
                 Threshold = F,
                 K = 2*F,
                 M = Players - K,
+                W = ceil(math:log2(K + M)),
                 %Bin = crypto:strong_rand_bytes(Players*4),
-                {ok, Shards} = erasure:encode_gc(K, M, Bin),
+                {ok, Shards} = erasure:encode_gc(K, M, W, Bin),
                 RandomShards = [lists:nth(I, Shards) || I <- lists:usort(RandomShardIndices)],
-                {ok, DecodedBin} = erasure:decode_gc(K, M, Shards),
-                {ok, RandomDecodedBin} = RandomDecodeResult = erasure:decode_gc(K, M, RandomShards),
+                {ok, DecodedBin} = erasure:decode_gc(K, M, W, Shards),
+                {ok, RandomDecodedBin} = RandomDecodeResult = erasure:decode_gc(K, M, W, RandomShards),
                 ShouldHaveDecoded = length(lists:usort(RandomShardIndices)) >= K,
                 %io:format("Random shards would be ~w -- ~p~n", [RandomShardIndices, ShouldHaveDecoded]),
                 ?WHENFAIL(begin
@@ -68,4 +69,6 @@ gen_players() ->
     ?SUCHTHAT(A, int(), A > 4 andalso A < 70).
 
 gen_random_shards() ->
-    ?SUCHTHAT({N, _, L}, ?LET(N, gen_players(), {N, eqc_gen:binary(N*16), eqc_gen:list(eqc_gen:elements(lists:seq(1, N)))}), length(lists:usort(L)) >= 2 * ceil((N - 1) / 3)).
+    ?SUCHTHAT({N, _, L}, ?LET(N, gen_players(),
+                              {N, eqc_gen:binary(N*16), eqc_gen:list(eqc_gen:elements(lists:seq(1, N)))}),
+              length(lists:usort(L)) >= 2 * ceil((N - 1) / 3)).
