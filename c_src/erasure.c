@@ -542,10 +542,16 @@ decode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
         goto cleanup;
     }
 
-    int res = jerasure_bitmatrix_decode(k, m, w, bitmatrix, 0, erasures, data_ptrs, coding_ptrs, blocksize, blocksize/w);
-    /* This works but ONLY if you don't use smart mode (the last argument set to 1 uses smart mode)
-     * smart mode seems to mis-allocate memory for the smart schedule and that causes segfaults
-     * int res = jerasure_schedule_decode_lazy(k, m, w, bitmatrix, erasures, data_ptrs, coding_ptrs, blocksize, blocksize/w, 0); */
+    int res = -1;
+
+    if (len == k+m) {
+        // we have all the shards (why are we decoding at all?) smart lazy decoding segfaults if you have all the shards
+        // so we use the simpler form here
+        res = jerasure_bitmatrix_decode(k, m, w, bitmatrix, 0, erasures, data_ptrs, coding_ptrs, blocksize, blocksize/w);
+    } else {
+        // we're actually missing something here, so we can use the smart lazy mode
+        res = jerasure_schedule_decode_lazy(k, m, w, bitmatrix, erasures, data_ptrs, coding_ptrs, blocksize, blocksize/w, 1);
+    }
 
     if (res == -1) {
         result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "decode_failed"));
