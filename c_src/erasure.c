@@ -541,11 +541,11 @@ decode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
         result = enif_make_badarg(env);
         goto cleanup;
     }
-    /* This works, but is slower */
-    /*int res = jerasure_bitmatrix_decode(k, m, w, bitmatrix, 0, erasures, data_ptrs, coding_ptrs, blocksize, blocksize/w);*/
+
+    int res = jerasure_bitmatrix_decode(k, m, w, bitmatrix, 0, erasures, data_ptrs, coding_ptrs, blocksize, blocksize/w);
     /* This works but ONLY if you don't use smart mode (the last argument set to 1 uses smart mode)
-     * smart mode seems to mis-allocate memory for the smart schedule and that causes segfaults */
-    int res = jerasure_schedule_decode_lazy(k, m, w, bitmatrix, erasures, data_ptrs, coding_ptrs, blocksize, blocksize/w, 0);
+     * smart mode seems to mis-allocate memory for the smart schedule and that causes segfaults
+     * int res = jerasure_schedule_decode_lazy(k, m, w, bitmatrix, erasures, data_ptrs, coding_ptrs, blocksize, blocksize/w, 0); */
 
     if (res == -1) {
         result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "decode_failed"));
