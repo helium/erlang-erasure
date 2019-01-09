@@ -591,10 +591,10 @@ cleanup:
 }
 
 static ErlNifFunc nif_funcs[] =
-    {{"encode", 3, encode, 0},
-     {"encode_gc", 4, encode_gc, 0},
-     {"decode", 3, decode, 0},
-     {"decode_gc", 4, decode_gc, 0}};
+    {{"encode", 3, encode, ERL_NIF_DIRTY_JOB_CPU_BOUND},
+     {"encode_gc", 4, encode_gc, ERL_NIF_DIRTY_JOB_CPU_BOUND},
+     {"decode", 3, decode, ERL_NIF_DIRTY_JOB_CPU_BOUND},
+     {"decode_gc", 4, decode_gc, ERL_NIF_DIRTY_JOB_CPU_BOUND}};
 
 #define ATOM(Id, Value)                                                        \
     {                                                                          \
