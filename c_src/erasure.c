@@ -337,12 +337,14 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     int bytes_per_shard = totalsize / k;
     int extra_bytes = totalsize % k;
 
+    bool missing_data_shards = false;
     // calculate the missing shards and track them in the erasures array
     for (int i = 0; i < k+m; i++) {
         if ((i < k && data_ptrs[i] == NULL) || (i >= k && coding_ptrs[i-k] == NULL)) {
             // set up any missing data or coding pointers
             if (i < k && data_ptrs[i] == NULL) {
                 data_ptrs[i] = shards+(blockspacing*i);
+                missing_data_shards = true;
             } else if (i >= k && coding_ptrs[i-k] == NULL) {
                 coding_ptrs[i-k] = shards+(blockspacing*i);
             }
@@ -352,14 +354,16 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     }
     erasures[j] = -1;
 
-    int w = 8;
-    matrix = reed_sol_vandermonde_coding_matrix(k, m, w);
-    int res = jerasure_matrix_decode(k, m, w, matrix, 1, erasures, data_ptrs, coding_ptrs, blocksize);
-    //abort();
+    if (missing_data_shards) {
+        int w = 8;
+        matrix = reed_sol_vandermonde_coding_matrix(k, m, w);
+        int res = jerasure_matrix_decode(k, m, w, matrix, 1, erasures, data_ptrs, coding_ptrs, blocksize);
+        //abort();
 
-    if (res == -1) {
-        result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "decode_failed"));
-        goto cleanup;
+        if (res == -1) {
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "decode_failed"));
+            goto cleanup;
+        }
     }
 
     ERL_NIF_TERM decoded;
@@ -517,11 +521,13 @@ decode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     int extra_bytes = totalsize % k;
 
     // calculate the missing shards and track them in the erasures array
+    bool missing_data_shards = false;
     for (int i = 0; i < k+m; i++) {
         if ((i < k && data_ptrs[i] == NULL) || (i >= k && coding_ptrs[i-k] == NULL)) {
             // set up any missing data or coding pointers
             if (i < k && data_ptrs[i] == NULL) {
                 data_ptrs[i] = shards+(blockspacing*i);
+                missing_data_shards = true;
             } else if (i >= k && coding_ptrs[i-k] == NULL) {
                 coding_ptrs[i-k] = shards+(blockspacing*i);
             }
@@ -531,31 +537,23 @@ decode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     }
     erasures[j] = -1;
 
-    matrix = cauchy_good_general_coding_matrix(k, m, w);
-    if (matrix == NULL) {
-        result = enif_make_badarg(env);
-        goto cleanup;
-    }
-    bitmatrix = jerasure_matrix_to_bitmatrix(k, m, w, matrix);
-    if (bitmatrix == NULL) {
-        result = enif_make_badarg(env);
-        goto cleanup;
-    }
+    if (missing_data_shards) {
+        matrix = cauchy_good_general_coding_matrix(k, m, w);
+        if (matrix == NULL) {
+            result = enif_make_badarg(env);
+            goto cleanup;
+        }
+        bitmatrix = jerasure_matrix_to_bitmatrix(k, m, w, matrix);
+        if (bitmatrix == NULL) {
+            result = enif_make_badarg(env);
+            goto cleanup;
+        }
 
-    int res = -1;
-
-    if (len == k+m) {
-        // we have all the shards (why are we decoding at all?) smart lazy decoding segfaults if you have all the shards
-        // so we use the simpler form here
-        res = jerasure_bitmatrix_decode(k, m, w, bitmatrix, 0, erasures, data_ptrs, coding_ptrs, blocksize, blocksize/w);
-    } else {
-        // we're actually missing something here, so we can use the smart lazy mode
-        res = jerasure_schedule_decode_lazy(k, m, w, bitmatrix, erasures, data_ptrs, coding_ptrs, blocksize, blocksize/w, 1);
-    }
-
-    if (res == -1) {
-        result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "decode_failed"));
-        goto cleanup;
+        int res = jerasure_schedule_decode_lazy(k, m, w, bitmatrix, erasures, data_ptrs, coding_ptrs, blocksize, blocksize/w, 1);
+        if (res == -1) {
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "decode_failed"));
+            goto cleanup;
+        }
     }
 
     ERL_NIF_TERM decoded;
