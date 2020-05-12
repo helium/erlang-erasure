@@ -246,7 +246,7 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     if (!enif_is_list(env, argv[2]) || !enif_get_list_length(env, argv[2], &len) || len < k)
     {
         // need at least K shards, sorry
-        return enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "insufficent_shards"));
+        return enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "insufficient_shards"));
     }
 
     int *matrix = NULL;
@@ -278,19 +278,19 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
             goto cleanup;
         }
         if (!enif_get_int(env, tuple[0], &id) || id < 0 || id >= k+m) {
-            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "invalid_shard_id"));
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_tuple2(env, enif_make_atom(env, "invalid_shard_id"), head));
             goto cleanup;
         }
         if ((id < k && data_ptrs[id] != NULL) || ( id >=k && coding_ptrs[id-k] != NULL)) {
-            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "duplicate_shard_id"));
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_tuple2(env, enif_make_atom(env, "duplicate_shard_id"), head));
             goto cleanup;
         }
         if (!enif_get_int(env, tuple[1], &totalsize) || totalsize <= 0) {
-            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "invalid_total_size"));
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_tuple2(env, enif_make_atom(env, "invalid_total_size"), head));
             goto cleanup;
         }
         if (lasttotalsize != 0 && totalsize != lasttotalsize) {
-            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "inconsistent_total_size"));
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_tuple2(env, enif_make_atom(env, "inconsistent_total_size"), head));
             goto cleanup;
         }
         lasttotalsize=totalsize;
@@ -317,7 +317,7 @@ decode(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
         ErlNifBinary input;
         if (!enif_is_binary(env, tuple[2]) || !enif_inspect_binary(env, tuple[2], &input) || input.size != blocksize)
         {
-            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "invalid_shard"));
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_tuple2(env, enif_make_atom(env, "invalid_shard"), head));
             goto cleanup;
         }
 
@@ -427,7 +427,7 @@ decode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     if (!enif_is_list(env, argv[3]) || !enif_get_list_length(env, argv[3], &len) || len < k)
     {
         // need at least K shards, sorry
-        return enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "insufficent_shards"));
+        return enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "insufficient_shards"));
     }
 
     int *matrix = NULL;
@@ -460,19 +460,19 @@ decode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
             goto cleanup;
         }
         if (!enif_get_int(env, tuple[0], &id) || id < 0 || id >= k+m) {
-            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "invalid_shard_id"));
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_tuple2(env, enif_make_atom(env, "invalid_shard_id"), head));
             goto cleanup;
         }
         if ((id < k && data_ptrs[id] != NULL) || ( id >=k && coding_ptrs[id-k] != NULL)) {
-            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "duplicate_shard_id"));
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_tuple2(env, enif_make_atom(env, "duplicate_shard_id"), head));
             goto cleanup;
         }
         if (!enif_get_int(env, tuple[1], &totalsize) || totalsize <= 0) {
-            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "invalid_total_size"));
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_tuple2(env, enif_make_atom(env, "invalid_total_size"), head));
             goto cleanup;
         }
         if (lasttotalsize != 0 && totalsize != lasttotalsize) {
-            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "inconsistent_total_size"));
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_tuple2(env, enif_make_atom(env, "inconsistent_total_size"), head));
             goto cleanup;
         }
         lasttotalsize=totalsize;
@@ -500,7 +500,7 @@ decode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
         ErlNifBinary input;
         if (!enif_is_binary(env, tuple[2]) || !enif_inspect_binary(env, tuple[2], &input) || input.size != blocksize)
         {
-            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_atom(env, "invalid_shard"));
+            result = enif_make_tuple2(env, enif_make_atom(env, "error"), enif_make_tuple2(env, enif_make_atom(env, "invalid_shard"), head));
             goto cleanup;
         }
 

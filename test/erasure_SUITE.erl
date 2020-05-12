@@ -37,8 +37,8 @@ simple_test(Config) ->
     ?assertEqual({ok, Data}, erasure:decode(K, M, Shards)),
     ?assertEqual({ok, Data}, erasure:decode(K, M, lists:sublist(Shards, K))),
     ?assertEqual({ok, Data}, erasure:decode(K, M, lists:reverse(lists:sublist(Shards, K)))),
-    ?assertMatch({error, _}, erasure:decode(K, M, lists:sublist(Shards, K - 1))),
-    ?assertMatch({error, _}, erasure:decode(K, M, lists:sublist(Shards, K - 1) ++ [hd(Shards)])),
+    ?assertEqual({error, insufficient_shards}, erasure:decode(K, M, lists:sublist(Shards, K - 1))),
+    ?assertEqual({error, {duplicate_shard_id, hd(Shards)}}, erasure:decode(K, M, lists:sublist(Shards, K - 1) ++ [hd(Shards)])),
     ok.
 
 cauchy_test(Config) ->
@@ -52,13 +52,13 @@ cauchy_test(Config) ->
     ?assertEqual({ok, Data}, erasure:decode_gc(K, M, Shards)),
     ?assertEqual({ok, Data}, erasure:decode_gc(K, M, lists:sublist(Shards, K))),
     ?assertEqual({ok, Data}, erasure:decode_gc(K, M, lists:reverse(lists:sublist(Shards, K)))),
-    ?assertMatch({error, _}, erasure:decode_gc(K, M, lists:sublist(Shards, K - 1))),
-    ?assertMatch({error, _}, erasure:decode_gc(K, M, lists:sublist(Shards, K - 1) ++ [hd(Shards)])),
+    ?assertEqual({error, insufficient_shards}, erasure:decode_gc(K, M, lists:sublist(Shards, K - 1))),
+    ?assertEqual({error, {duplicate_shard_id, hd(Shards)}}, erasure:decode_gc(K, M, lists:sublist(Shards, K - 1) ++ [hd(Shards)])),
     ?assertEqual({ok, Data}, erasure:decode_gc(K, M, W, Shards)),
     ?assertEqual({ok, Data}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K))),
     ?assertEqual({ok, Data}, erasure:decode_gc(K, M, W, lists:reverse(lists:sublist(Shards, K)))),
-    ?assertMatch({error, _}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K - 1))),
-    ?assertMatch({error, _}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K - 1) ++ [hd(Shards)])),
+    ?assertEqual({error, insufficient_shards}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K - 1))),
+    ?assertEqual({error, {duplicate_shard_id, hd(Shards)}}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K - 1) ++ [hd(Shards)])),
     ok.
 
 cauchy_higher_w_test(Config) ->
@@ -70,6 +70,6 @@ cauchy_higher_w_test(Config) ->
     ?assertEqual({ok, Data}, erasure:decode_gc(K, M, W, Shards)),
     ?assertEqual({ok, Data}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K))),
     ?assertEqual({ok, Data}, erasure:decode_gc(K, M, W, lists:reverse(lists:sublist(Shards, K)))),
-    ?assertMatch({error, _}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K - 1))),
-    ?assertMatch({error, _}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K - 1) ++ [hd(Shards)])),
+    ?assertEqual({error, insufficient_shards}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K - 1))),
+    ?assertEqual({error, {duplicate_shard_id, hd(Shards)}}, erasure:decode_gc(K, M, W, lists:sublist(Shards, K - 1) ++ [hd(Shards)])),
     ok.
