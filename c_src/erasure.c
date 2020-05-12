@@ -201,6 +201,9 @@ encode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     }
     schedule = jerasure_smart_bitmatrix_to_schedule(k, m, w, bitmatrix);
     if (schedule == NULL) {
+        free(shards);
+        free(matrix);
+        free(bitmatrix);
         return enif_make_badarg(env);
     }
     jerasure_schedule_encode(k, m, w, schedule, data_ptrs, coding_ptrs, blocksize, blocksize/w);
@@ -221,6 +224,8 @@ encode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
     }
     free(shards);
     free(matrix);
+    free(bitmatrix);
+    jerasure_free_schedule(schedule);
     return enif_make_tuple2(env, enif_make_atom(env, "ok"), list);
 }
 
@@ -575,6 +580,9 @@ decode_gc(ErlNifEnv * env, int argc, const ERL_NIF_TERM argv[])
 
 cleanup:
 
+        if (bitmatrix != NULL) {
+            free(bitmatrix);
+        }
         if (matrix != NULL) {
             free(matrix);
         }
