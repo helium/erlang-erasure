@@ -10,7 +10,7 @@ jobs:
 
   ci:
     runs-on: ubuntu-latest
-    container: madninja/builder-erlang:1
+    container: madninja/builder-erlang:2
 
     steps:
     - uses: actions/checkout@v2

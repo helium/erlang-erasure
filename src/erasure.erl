@@ -9,7 +9,7 @@
 -on_load(init/0).
 
 -define(APPNAME, erasure).
--define(LIBNAME, 'erasure').
+-define(LIBNAME, 'liberasure').
 
 -type shards() :: [{Index :: non_neg_integer(), TotalSize :: pos_integer(), binary()}, ...].
 
