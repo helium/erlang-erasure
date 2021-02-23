@@ -23,9 +23,9 @@ ExternalProject_Add(jerasure
                     CC=${CMAKE_C_COMPILER}
                     "CFLAGS=-I${CMAKE_CURRENT_BINARY_DIR}/include ${CMAKE_C_FLAGS_${BUILD_TYPE_UC}}"
                     LDFLAGS=-L${CMAKE_CURRENT_BINARY_DIR}/lib
-  BUILD_COMMAND     make -j
+  BUILD_COMMAND     ${CMAKE_BUILD_TOOL} -j
   BUILD_BYPRODUCTS  ${CMAKE_CURRENT_BINARY_DIR}/lib/libJerasure.a
-  INSTALL_COMMAND   make install
+  INSTALL_COMMAND   ${CMAKE_BUILD_TOOL} install
   )
 ExternalProject_Add_StepDependencies(jerasure build gf-complete)
 
