@@ -5,6 +5,14 @@ if(CMAKE_BUILD_TYPE)
   string(TOUPPER ${CMAKE_BUILD_TYPE} BUILD_TYPE_UC)
 endif()
 
+if (APPLE)
+  execute_process(COMMAND
+    xcrun --show-sdk-path
+    OUTPUT_VARIABLE APPLE_SDK_ROOT
+    )
+  set(GF_APPLE_ENV "SDKROOT=${APPLE_SDK_ROOT}")
+endif()
+
 ExternalProject_Add(gf-complete
   PREFIX            ${CMAKE_CURRENT_BINARY_DIR}/gf-complete
   GIT_REPOSITORY    https://github.com/ceph/gf-complete.git
@@ -19,7 +27,8 @@ ExternalProject_Add(gf-complete
                     $ENV{CONFIGURE_ARGS}
                     CC=${CMAKE_C_COMPILER}
                     CFLAGS=${CMAKE_C_FLAGS_${BUILD_TYPE_UC}}
-  BUILD_COMMAND     ${CMAKE_BUILD_TOOL} -j
+                    ${GF_APPLE_ENV}  
+  BUILD_COMMAND     ${CMAKE_BUILD_TOOL} -j ${GF_APPLE_ENV}
   BUILD_BYPRODUCTS  ${CMAKE_CURRENT_BINARY_DIR}/lib/libgf_complete.a
   INSTALL_COMMAND   ${CMAKE_BUILD_TOOL} install
   )

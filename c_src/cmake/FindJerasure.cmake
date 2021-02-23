@@ -8,6 +8,14 @@ if(CMAKE_BUILD_TYPE)
   string(TOUPPER ${CMAKE_BUILD_TYPE} BUILD_TYPE_UC)
 endif()
 
+if (APPLE)
+  execute_process(COMMAND
+    xcrun --show-sdk-path
+    OUTPUT_VARIABLE APPLE_SDK_ROOT
+    )
+  set(GF_APPLE_ENV "SDKROOT=${APPLE_SDK_ROOT}")
+endif()
+
 ExternalProject_Add(jerasure
   PREFIX            ${CMAKE_CURRENT_BINARY_DIR}/jerasure
   GIT_REPOSITORY    http://github.com/ceph/jerasure.git
@@ -23,7 +31,8 @@ ExternalProject_Add(jerasure
                     CC=${CMAKE_C_COMPILER}
                     "CFLAGS=-I${CMAKE_CURRENT_BINARY_DIR}/include ${CMAKE_C_FLAGS_${BUILD_TYPE_UC}}"
                     LDFLAGS=-L${CMAKE_CURRENT_BINARY_DIR}/lib
-  BUILD_COMMAND     ${CMAKE_BUILD_TOOL} -j
+                    ${GF_APPLE_ENV}
+  BUILD_COMMAND     ${CMAKE_BUILD_TOOL} -j ${GF_APPLE_ENV}
   BUILD_BYPRODUCTS  ${CMAKE_CURRENT_BINARY_DIR}/lib/libJerasure.a
   INSTALL_COMMAND   ${CMAKE_BUILD_TOOL} install
   )
