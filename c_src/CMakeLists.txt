@@ -12,6 +12,15 @@ include(ASan)
 IF (APPLE)
   set(CMAKE_MODULE_LINKER_FLAGS "-flat_namespace -undefined suppress")
   set(CMAKE_MACOSX_RPATH 1)
+  if (NOT DEFINED ENV{SDKROOT})
+    execute_process(COMMAND
+      xcrun --show-sdk-path
+      OUTPUT_VARIABLE APPLE_SDK_ROOT
+      )
+  else()
+     set(APPLE_SDK_ROOT $ENV{SDKROOT})
+  endif()
+  set(GF_APPLE_ENV "SDKROOT=${APPLE_SDK_ROOT}")
 ENDIF()
 
 #

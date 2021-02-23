@@ -19,9 +19,10 @@ ExternalProject_Add(gf-complete
                     $ENV{CONFIGURE_ARGS}
                     CC=${CMAKE_C_COMPILER}
                     CFLAGS=${CMAKE_C_FLAGS_${BUILD_TYPE_UC}}
-  BUILD_COMMAND     make -j
+                    ${GF_APPLE_ENV}  
+  BUILD_COMMAND     ${CMAKE_BUILD_TOOL} -j ${GF_APPLE_ENV}
   BUILD_BYPRODUCTS  ${CMAKE_CURRENT_BINARY_DIR}/lib/libgf_complete.a
-  INSTALL_COMMAND   make install
+  INSTALL_COMMAND   ${CMAKE_BUILD_TOOL} install
   )
 
 add_library(GFComplete::GFComplete STATIC IMPORTED)
