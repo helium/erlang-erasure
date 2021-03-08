@@ -1,13 +1,17 @@
 ##########################################################################
 # Project Setup                                                          #
 ##########################################################################
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.11)
 project(ErlangErasure C)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_STANDARD 99)
 
 list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_SOURCE_DIR}/cmake)
 include(ASan)
+
+if(DEFINED ENV{CMAKE_TOOLCHAIN_FILE})
+  set(CMAKE_TOOLCHAIN_FILE $ENV{CMAKE_TOOLCHAIN_FILE})
+endif()
 
 IF (APPLE)
   set(CMAKE_MODULE_LINKER_FLAGS "-flat_namespace -undefined suppress")
