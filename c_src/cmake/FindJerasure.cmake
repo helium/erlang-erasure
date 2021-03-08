@@ -8,6 +8,12 @@ if(CMAKE_BUILD_TYPE)
   string(TOUPPER ${CMAKE_BUILD_TYPE} BUILD_TYPE_UC)
 endif()
 
+set(CONFIGURE_ARGS $ENV{CONFIGURE_ARGS})
+separate_arguments(CONFIGURE_ARGS)
+
+set(CONFIGURE_CFLAGS   "$ENV{CFLAGS}   -I${CMAKE_CURRENT_BINARY_DIR}/include ${CMAKE_C_FLAGS_${BUILD_TYPE_UC}}")
+set(CONFIGURE_LDFLAGS  "$ENV{LDFLAGS}  -L${CMAKE_CURRENT_BINARY_DIR}/lib")
+
 ExternalProject_Add(jerasure
   PREFIX            ${CMAKE_CURRENT_BINARY_DIR}/jerasure
   GIT_REPOSITORY    http://github.com/ceph/jerasure.git
@@ -19,10 +25,10 @@ ExternalProject_Add(jerasure
                     --prefix=${CMAKE_CURRENT_BINARY_DIR}
                     --with-pic
                     --disable-shared
-                    $ENV{CONFIGURE_ARGS}
+                    ${CONFIGURE_ARGS}
                     CC=${CMAKE_C_COMPILER}
-                    "CFLAGS=-I${CMAKE_CURRENT_BINARY_DIR}/include ${CMAKE_C_FLAGS_${BUILD_TYPE_UC}}"
-                    LDFLAGS=-L${CMAKE_CURRENT_BINARY_DIR}/lib
+                    CFLAGS=${CONFIGURE_CFLAGS}
+                    LDFLAGS=${CONFIGURE_LDFLAGS}
                     ${GF_APPLE_ENV}
   BUILD_COMMAND     ${CMAKE_BUILD_TOOL} -j ${GF_APPLE_ENV}
   BUILD_BYPRODUCTS  ${CMAKE_CURRENT_BINARY_DIR}/lib/libJerasure.a
